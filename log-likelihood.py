@@ -128,9 +128,6 @@ def process_json_in(j_in):
 def main(args):
     try:
         s_in = sys.stdin.read()
-        print('input:')
-        print(s_in)
-        print()
         j_in = json.loads(s_in)
     except Exception as e:
         return dict(
