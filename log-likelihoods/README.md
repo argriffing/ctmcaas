@@ -1,7 +1,7 @@
 Example usage:
 
 ```
-.../log-likelihoods$ cat jc.in.json
+$ cat jc.in.json
 ```
 ```json
 {
@@ -25,7 +25,7 @@ Example usage:
 ```
 
 ```
-.../log-likelihoods$ cat jc.in.json | python wrapped-npmctree.py | python -m json.tool
+$ cat jc.in.json | python wrapped-npmctree.py | python -m json.tool
 ```
 ```json
 {
