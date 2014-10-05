@@ -1,6 +1,6 @@
 {
 	"node_count" : 2,
-	"process_count" : 2,
+	"process_count" : 1,
 	"state_space_shape" : [4, 1],
 	"tree" : {
 		"row" : [0],

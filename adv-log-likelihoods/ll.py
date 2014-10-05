@@ -5,36 +5,6 @@ This interface takes some care about memory usage,
 while allowing more subtlety in the representation of observed data,
 and while allowing more flexibility in the representation of
 inhomogeneity of the process across branches.
-{
-	"node_count" : 2,
-    "process_count" : 2,
-	"state_space_shape" : [4, 1],
-	"tree" : {
-		"row" : [0],
-		"col" : [1],
-		"rate" : [1],
-		"process" : [0]},
-	"processes" : [ {
-		"row" : [
-			[0, 0], [0, 0], [0, 0],
-			[1, 0], [1, 0], [1, 0],
-			[2, 0], [2, 0], [2, 0],
-			[3, 0], [3, 0], [3, 0]],
-		"col" : [
-			[1, 0], [2, 0], [3, 0],
-			[0, 0], [2, 0], [3, 0],
-			[0, 0], [1, 0], [3, 0],
-			[0, 0], [1, 0], [2, 0]],
-		"rate" : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] } ],
-	"prior_feasible_states" : [[0, 0], [1, 0], [2, 0], [3, 0]],
-	"prior_distribution" : [0.25, 0.25, 0.25, 0.25]},
-	"observable_nodes" : [0, 0, 1, 1],
-	"observable_axes" : [0, 1, 0, 1],
-	"iid_observations" : [
-		[0, 0, 0, 0],
-		[2, 0, 2, 0],
-		[0, 0, 1, 0]]
-}
 
 """
 from __future__ import print_function, division
