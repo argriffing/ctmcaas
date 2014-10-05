@@ -39,9 +39,23 @@ inhomogeneity of the process across branches.
 """
 from __future__ import print_function, division
 
+import argparse
+import json
+import traceback
+import sys
+
 import networkx as nx
 import numpy as np
 from numpy.testing import assert_equal
+from scipy.linalg import expm
+from scipy.sparse import coo_matrix
+
+
+def get_observables_info(j_in):
+    return (
+            np.array(j_in['observable_nodes']),
+            np.array(j_in['observable_axes']),
+            np.array(j_in['iid_observations']))
 
 
 def get_prior_info(j_in):
@@ -96,7 +110,7 @@ def get_tree_info(j_in):
     edges = zip(row, col)
     edge_rate_pairs = zip(edges, rate)
     edge_process_pairs = zip(edges, process)
-    return T, root, edge, edge_rate_pairs, edge_process_pairs
+    return T, root, edges, edge_rate_pairs, edge_process_pairs
 
 
 def get_node_to_depth(T, root):
@@ -180,7 +194,7 @@ def create_rate_matrix(state_space_shape, row, col, rate):
     mcol = np.ravel_multi_index(col.T, state_space_shape)
     Q = coo_matrix((rate, (mrow, mcol)), (nstates, nstates)).A
     exit_rates = Q.sum(axis=1)
-    Q = Q - Q.diag(exit_rates)
+    Q = Q - np.diag(exit_rates)
     return Q
 
 
@@ -206,7 +220,8 @@ def create_indicator_array(
 
     # For each observable associated with the node under consideration,
     # apply the observation mask across all iid sites.
-    for idx in np.nonzero(observable_nodes == node):
+    local_observables = np.flatnonzero(observable_nodes == node)
+    for idx in local_observables:
         states = iid_observations[:, idx]
         axis = observable_axes[idx]
         k = state_space_shape[axis]
@@ -245,8 +260,6 @@ def get_conditional_likelihoods(
     of shape (nsites, nnodes, nstates).
 
     """
-    all_successors = T.successors()
-    all_predecessors = T.predecessors()
     child_to_edge = dict((tail, (head, tail)) for head, tail in edges)
     edge_to_rate = dict(edge_rate_pairs)
     edge_to_process = dict(edge_process_pairs)
@@ -272,7 +285,7 @@ def get_conditional_likelihoods(
         # associated with the activated internal node.
         # The child nodes then become inactive and their
         # associated arrays are deleted.
-        for child in successors[node]:
+        for child in T.successors(node):
             arr *= node_to_array[child]
             del node_to_array[child]
 
@@ -318,9 +331,9 @@ def get_example_tree():
     return T, root
 
 
-def test_high_water_mark():
+def test_subtree_thickness():
     T, root = get_example_tree()
-    d_actual = get_node_to_subtree_high_water_mark(T, root)
+    d_actual = get_node_to_subtree_thickness(T, root)
     d_desired = {
             0 : 3,
             1 : 2,
@@ -348,6 +361,10 @@ def process_json_in(j_in):
     nprocesses = j_in['process_count']
     state_space_shape = np.array(j_in['state_space_shape'])
 
+    # Unpack stuff related to observables.
+    info = get_observables_info(j_in)
+    observable_nodes, observable_axes, iid_observations = info
+
     # Unpack stuff related to the prior distribution.
     info = get_prior_info(j_in)
     prior_feasible_states, prior_distribution = info
@@ -358,7 +375,7 @@ def process_json_in(j_in):
 
     # Unpack stuff related to the tree and its edges.
     info = get_tree_info(j_in)
-    T, root, edge, edge_rate_pairs, edge_process_pairs = info
+    T, root, edges, edge_rate_pairs, edge_process_pairs = info
 
     # Interpret the prior distribution.
     nstates = np.prod(state_space_shape)
@@ -395,19 +412,21 @@ def process_json_in(j_in):
 
 
 def main(args):
-    test_high_water_mark()
+    test_subtree_thickness()
     test_node_evaluation_order()
 
     try:
         s_in = sys.stdin.read()
         j_in = json.loads(s_in)
     except Exception as e:
+        raise
         return dict(
                 status = 'error',
                 message = 'json parsing error: ' + traceback.format_exc())
     try:
         return process_json_in(j_in)
     except Exception as e:
+        raise
         return dict(
                 status = 'error',
                 message = 'processing error: ' + traceback.format_exc())

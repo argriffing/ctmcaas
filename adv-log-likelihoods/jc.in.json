@@ -20,7 +20,7 @@
 			[0, 0], [1, 0], [2, 0]],
 		"rate" : [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] } ],
 	"prior_feasible_states" : [[0, 0], [1, 0], [2, 0], [3, 0]],
-	"prior_distribution" : [0.25, 0.25, 0.25, 0.25]},
+	"prior_distribution" : [0.25, 0.25, 0.25, 0.25],
 	"observable_nodes" : [0, 0, 1, 1],
 	"observable_axes" : [0, 1, 0, 1],
 	"iid_observations" : [
