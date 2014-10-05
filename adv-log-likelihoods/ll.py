@@ -132,17 +132,6 @@ def get_node_evaluation_order(T, root):
                 stack.extend([n] + progeny)
 
 
-#def create_dense_obs_array(node, state_space_shape, iid_observations):
-    # TODO undo the compound state indexing as follows
-    # TODO actually this would not work because of the partial observations
-    #nsites, nnodes, state_space_ndim = iid_observations.shape
-    #iid_observations = np.ravel_multi_index(
-            #np.rollaxis(iid_observations, 2), state_space_shape)
-
-    #nsites, nnodes_observable = iid_observations.shape
-    #pass
-
-
 def create_rate_matrix(state_space_shape, row, col, rate):
     """
     Create the rate matrix.
@@ -389,14 +378,12 @@ def main(args):
         s_in = sys.stdin.read()
         j_in = json.loads(s_in)
     except Exception as e:
-        raise
         return dict(
                 status = 'error',
                 message = 'json parsing error: ' + traceback.format_exc())
     try:
         return process_json_in(j_in)
     except Exception as e:
-        raise
         return dict(
                 status = 'error',
                 message = 'processing error: ' + traceback.format_exc())
