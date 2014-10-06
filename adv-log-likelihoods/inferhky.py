@@ -1,5 +1,3 @@
-"""
-"""
 from __future__ import division, print_function, absolute_import
 
 import itertools
@@ -11,7 +9,26 @@ import networkx as nx
 from numpy.testing import assert_equal
 from scipy.sparse import coo_matrix
 
-from util import ad_hoc_fasta_reader
+
+def ad_hoc_fasta_reader(fin):
+    name_seq_pairs = []
+    while True:
+
+        # read the name
+        line = fin.readline().strip()
+        if not line:
+            return name_seq_pairs
+        assert_equal(line[0], '>')
+        name = line[1:].strip()
+
+        # read the single line sequence
+        line = fin.readline().strip()
+        seq = line
+        unrecognized = set(line) - set('ACGT')
+        if unrecognized:
+            raise Exception('unrecognized nucleotides: ' + str(unrecognized))
+
+        name_seq_pairs.append((name, seq))
 
 
 # Defines the shape of the state space,
@@ -307,8 +324,8 @@ def main(args):
     # Build the nested structure to be converted to json.
     data = dict(
             node_count = len(T),
-            process_count = 2,
-            state_space_shape = (4, 4),
+            process_count = len(processes),
+            state_space_shape = M.get_state_space_shape(),
             tree = tree,
             processes = processes,
             prior_feasible_states = prior_feasible_states,
