@@ -1,5 +1,9 @@
 This is a more advanced interface for log likelihoods calculations.
 
+The directory also includes models, data, and inference code for
+analysis of an hky gene conversion model.
+
+Example usage, for a toy model:
 ```
 $ cat jc.in.json
 ```

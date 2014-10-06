@@ -378,12 +378,16 @@ def main(args):
         s_in = sys.stdin.read()
         j_in = json.loads(s_in)
     except Exception as e:
+        if args.debug:
+            raise
         return dict(
                 status = 'error',
                 message = 'json parsing error: ' + traceback.format_exc())
     try:
         return process_json_in(j_in)
     except Exception as e:
+        if args.debug:
+            raise
         return dict(
                 status = 'error',
                 message = 'processing error: ' + traceback.format_exc())
@@ -391,5 +395,6 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--debug', action='store_true')
     j_out = main(parser.parse_args())
     print(json.dumps(j_out))
