@@ -133,23 +133,6 @@ def main(args):
             observations.append(observation)
         iid_observations.append(observations)
 
-    # Use previously computed max likelihood parameter estimates.
-    # The log likelihood should be near 1721.7834201000449.
-    kappa = 2.11379742986
-    tau = 1.82001290642
-    nt_probs = [ 0.28289892,  0.25527043,  0.20734073,  0.25448992]
-    edge_rate_pairs = (
-        (('N0', 'N1'), 0.0706039486132),
-        (('N0', 'Tamarin'), 0.102976327457),
-        (('N1', 'Macaque'), 0.0511418556427),
-        (('N1', 'N2'), 0.00879371918394),
-        (('N2', 'N3'), 0.0109200792917),
-        (('N2', 'Orangutan'), 0.0298655988153),
-        (('N3', 'Gorilla'), 0.00501349585464),
-        (('N3', 'Chimpanzee'), 0.00455294684035),
-        )
-    edge_to_rate = dict(edge_rate_pairs)
-
     # Do something about the node representations.
     # They need to be numeric.
     # That is easy enough, I think they can be arbitrarily numbered.
