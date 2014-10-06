@@ -9,6 +9,40 @@ $ python make-hky-geneconv-json.py --fasta=cleaned.fasta | python ll.py | python
 -1721.78341305
 ```
 
+
+Example mle search using an internet log likelihood server:
+```
+$ python serve-ll.py
+$ python hky-geneconv-mle.py --fasta=cleaned.fasta --ll_url=http://localhost:8080/
+optimization result:
+  status: 0
+ success: True
+    nfev: 480
+     fun: 1721.7834131263585
+       x: array([-1.26698319, -1.3697533 , -1.57771381, -1.37281197,  0.74847448,
+        0.59884455, -2.65064603, -2.27328267, -2.97316305, -4.73377   ,
+       -4.51730145, -3.51105446, -5.2956917 , -5.39206932])
+ message: 'CONVERGENCE: REL_REDUCTION_OF_F_<=_FACTR*EPSMCH'
+     jac: array([ 0.00090949,  0.0005457 , -0.00406999,  0.00231921, -0.00040927,
+       -0.00179625, -0.0003638 , -0.00156888, -0.00056843,  0.00015916,
+        0.00097771,  0.00115961,  0.00272848, -0.00552518])
+     nit: 27
+
+kappa: 2.11377294482
+tau: 1.82001465591
+nt_probs: [ 0.28289949  0.25526994  0.20734023  0.25449034]
+edge rates:
+('N0', 'N1') : 0.0706055846813
+('N0', 'Tamarin') : 0.102973596402
+('N1', 'Macaque') : 0.0511412917139
+('N1', 'N2') : 0.00879325793232
+('N2', 'N3') : 0.0109184479513
+('N2', 'Orangutan') : 0.0298654060709
+('N3', 'Gorilla') : 0.00501314556266
+('N3', 'Chimpanzee') : 0.00455254289649
+```
+
+
 Example usage, for a toy model:
 ```
 $ cat jc.in.json
