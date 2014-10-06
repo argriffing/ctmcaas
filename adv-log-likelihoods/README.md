@@ -3,6 +3,12 @@ This is a more advanced interface for log likelihoods calculations.
 The directory also includes models, data, and inference code for
 analysis of an hky gene conversion model.
 
+Example hky gene conversion log likelihood calculation:
+```
+$ python make-hky-geneconv-json.py --fasta=cleaned.fasta | python ll.py | python json-sum.py log_likelihoods
+-1721.78341305
+```
+
 Example usage, for a toy model:
 ```
 $ cat jc.in.json
