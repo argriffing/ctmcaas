@@ -13,11 +13,11 @@ import scipy.optimize
 
 import mle_geneconv_common
 
-from hky85geneconv import (
-        HKY85_GENECONV_Abstract,
-        HKY85_GENECONV_Concrete)
+from mg94geneconv import (
+        MG94_GENECONV_Abstract,
+        MG94_GENECONV_Concrete)
 
-from hky_geneconv_common import (
+from mg_geneconv_common import (
         ad_hoc_fasta_reader,
         get_tree_info_with_outgroup)
 
@@ -26,7 +26,7 @@ def main(args):
     # Read the hardcoded tree information.
     T, root = get_tree_info_with_outgroup()
     leaves = set(v for v, d in T.degree().items() if d == 1)
-    outgroup = 'Tamarin'
+    outgroup = 'kluveri'
 
     # Read the data as name sequence pairs.
     with open(args.fasta) as fin:
@@ -34,14 +34,15 @@ def main(args):
     name_to_seq = dict(name_seq_pairs)
 
     # Order the observables.
+    suffix_len = 7
     observable_names = [name for name, seq in name_seq_pairs]
-    observable_suffixes = [name[-3:] for name in observable_names]
+    observable_suffixes = [name[-suffix_len:] for name in observable_names]
 
     # For each observable, define the axis.
     # In our case, the compound state has one axis for each paralog,
     # and for each node zero or one or both paralogs may be observable.
     # Each observable can be observed only on a single axis.
-    suffix_to_axis = {'EDN' : 0, 'ECP' : 1}
+    suffix_to_axis = {'YAL056W' : 0, 'YOR371C' : 1}
     observable_axes = [suffix_to_axis[s] for s in observable_suffixes]
 
     # Define the map from nucleotide to observation index.
@@ -69,16 +70,19 @@ def main(args):
     edges = list(T.edges())
     edge_to_eidx = dict((e, i) for i, e in enumerate(edges))
 
-    observable_nodes = [name_to_node[n[:-3]] for n in observable_names]
+    print(observable_names)
+    print(name_to_node)
+    observable_nodes = [name_to_node[n[:-suffix_len]] for n in observable_names]
 
     tree_row = [name_to_node[na] for na, nb in edges]
     tree_col = [name_to_node[nb] for na, nb in edges]
-    tree_process = [0 if e == ('N0', 'Tamarin') else 1 for e in edges]
+    tree_process = [0 if e == ('N0', outgroup) else 1 for e in edges]
 
     # define the process associated with an initial guess
-    M = HKY85_GENECONV_Abstract()
+    M = MG94_GENECONV_Abstract()
     guess = M.instantiate()
     guess.set_kappa(2.0)
+    guess.set_omega(0.5)
     guess.set_tau(2.0)
     guess.set_nt_probs([0.30, 0.25, 0.20, 0.25])
 
@@ -96,14 +100,12 @@ def main(args):
                 mle_geneconv_common.eval_ll_internets,
                 args.ll_url)
     else:
-        fn = mle_geneconv_common.eval_ll_cmdline
-
-    # definet the abstract model
-    M = HKY_GENECONV_Abstract()
+        #fn = mle_geneconv_common.eval_ll_cmdline
+        fn = mle_geneconv_common.eval_ll_module
 
     # define the function to minimize
     f = functools.partial(
-            objective,
+            mle_geneconv_common.objective,
             M,
             fn,
             tree_row, tree_col, tree_process,
@@ -125,6 +127,7 @@ def main(args):
     edge_rates = np.exp(x_edge)
     m = M.instantiate(x_process)
     print('kappa:', m.kappa)
+    print('omega:', m.omega)
     print('tau:', m.tau)
     print('nt_probs:', m.nt_probs)
     print('edge rates:')
@@ -137,5 +140,5 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--ll_url')
     parser.add_argument('--fasta', required=True,
-            help='fasta file with paralog alignment of EDN and ECP')
+            help='fasta file with paralog alignment of YAL056W and YOR371C')
     main(parser.parse_args())
