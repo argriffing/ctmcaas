@@ -3,11 +3,13 @@ from __future__ import division, print_function, absolute_import
 import argparse
 import json
 
-from hky_geneconv_common import (
-        ad_hoc_fasta_reader,
-        get_tree_info_with_outgroup,
+from hky85geneconv import (
         HKY85_GENECONV_Abstract,
         HKY85_GENECONV_Concrete)
+
+from hky_geneconv_common import (
+        ad_hoc_fasta_reader,
+        get_tree_info_with_outgroup)
 
 
 def main(args):

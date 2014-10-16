@@ -11,11 +11,13 @@ import requests
 import numpy as np
 import scipy.optimize
 
-from hky_geneconv_common import (
-        ad_hoc_fasta_reader,
-        get_tree_info_with_outgroup,
+from hky85geneconv import (
         HKY85_GENECONV_Abstract,
         HKY85_GENECONV_Concrete)
+
+from hky_geneconv_common import (
+        ad_hoc_fasta_reader,
+        get_tree_info_with_outgroup)
 
 
 def eval_ll_cmdline(j_data):
