@@ -17,7 +17,8 @@ import sys
 import networkx as nx
 import numpy as np
 from numpy.testing import assert_equal
-from scipy.linalg import expm
+from scipy.linalg import expm, eig, inv
+from scipy.sparse.linalg import expm_multiply
 from scipy.sparse import coo_matrix
 
 
@@ -56,7 +57,7 @@ def get_tree_info(j_in):
     row = tree['row']
     col = tree['col']
     rate = np.array(tree['rate'], dtype=float)
-    process = np.array(tree['process'], dtype=float)
+    process = np.array(tree['process'])
     if not (set(row) <= nodes):
         raise Exception('unexpected node')
     if not (set(col) <= nodes):
@@ -132,7 +133,7 @@ def get_node_evaluation_order(T, root):
                 stack.extend([n] + progeny)
 
 
-def create_rate_matrix(state_space_shape, row, col, rate):
+def create_sparse_rate_matrix(state_space_shape, row, col, rate):
     """
     Create the rate matrix.
 
@@ -147,14 +148,26 @@ def create_rate_matrix(state_space_shape, row, col, rate):
     assert_equal(row.shape[1], ndim)
     assert_equal(col.shape[1], ndim)
 
-    # create the dense Q matrix from the sparse arrays
+    # create the sparse Q matrix from the sparse arrays
     nstates = np.prod(state_space_shape)
     mrow = np.ravel_multi_index(row.T, state_space_shape)
     mcol = np.ravel_multi_index(col.T, state_space_shape)
-    Q = coo_matrix((rate, (mrow, mcol)), (nstates, nstates)).A
-    exit_rates = Q.sum(axis=1)
-    Q = Q - np.diag(exit_rates)
+    Q = coo_matrix((rate, (mrow, mcol)), (nstates, nstates))
+
+    # get the dense array of exit rates, and set the diagonal
+    exit_rates = Q.sum(axis=1).A.flatten()
+    Q.setdiag(-exit_rates)
+
     return Q
+
+
+def create_dense_rate_matrix(state_space_shape, row, col, rate):
+    """
+    Create the rate matrix.
+
+    """
+    m = create_sparse_rate_matrix(state_space_shape, row, col, rate)
+    return m.A
 
 
 def create_indicator_array(
@@ -199,6 +212,20 @@ def create_indicator_array(
     return obs
 
 
+class EigenRateExpm(object):
+    def __init__(self, Q_dense):
+        print('computing eigendecomposition...')
+        self.w, self.U = eig(Q_dense)
+        print('inverting...')
+        self.V = inv(self.U)
+        print('done preprocessing the rate matrix.')
+
+    def get_P(self, rate_scaling_factor):
+        w_exp = np.exp(self.w * rate_scaling_factor)
+        P_raw = (self.U * w_exp).dot(self.V)
+        return np.clip(P_raw.real, 0, np.inf)
+
+
 def get_conditional_likelihoods(
         T, root, edges, edge_rate_pairs, edge_process_pairs,
         state_space_shape,
@@ -222,6 +249,17 @@ def get_conditional_likelihoods(
     child_to_edge = dict((tail, (head, tail)) for head, tail in edges)
     edge_to_rate = dict(edge_rate_pairs)
     edge_to_process = dict(edge_process_pairs)
+
+    # For each process, precompute the eigendecomposition.
+    eigen_rate_expm_objects = []
+    nprocesses = len(processes_row)
+    for i in range(nprocesses):
+        row = processes_row[i]
+        col = processes_col[i]
+        rate = processes_rate[i]
+        Q = create_dense_rate_matrix(state_space_shape, row, col, rate)
+        obj = EigenRateExpm(Q)
+        eigen_rate_expm_objects.append(obj)
 
     # For the few nodes that are active at a given point in the traversal,
     # we track a 2d array of shape (nsites, nstates).
@@ -260,8 +298,18 @@ def get_conditional_likelihoods(
             col = processes_col[edge_process]
             rate = processes_rate[edge_process]
             rate = rate * edge_rate
-            Q = create_rate_matrix(state_space_shape, row, col, rate)
-            P = expm(Q)
+
+            # First way
+            #Q = create_dense_rate_matrix(state_space_shape, row, col, rate)
+            #P = expm(Q)
+            #arr = P.dot(arr)
+
+            # Second way
+            #Q = create_sparse_rate_matrix(state_space_shape, row, col, rate)
+            #arr = expm_multiply(Q, arr)
+
+            # Third way
+            P = eigen_rate_expm_objects[edge_process].get_P(edge_rate)
             arr = P.dot(arr)
 
         # Associate the array with the current node.

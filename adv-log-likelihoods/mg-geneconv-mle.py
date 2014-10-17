@@ -1,5 +1,6 @@
 from __future__ import division, print_function, absolute_import
 
+from itertools import izip_longest
 import functools
 import argparse
 import json
@@ -12,6 +13,7 @@ import numpy as np
 import scipy.optimize
 
 import mle_geneconv_common
+import mg94geneconv
 
 from mg94geneconv import (
         MG94_GENECONV_Abstract,
@@ -20,6 +22,18 @@ from mg94geneconv import (
 from mg_geneconv_common import (
         ad_hoc_fasta_reader,
         get_tree_info_with_outgroup)
+
+
+# Official Python itertools recipe.
+def grouper(iterable, n, fillvalue=None):
+    "Collect data into fixed-length chunks or blocks"
+    # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx
+    args = [iter(iterable)] * n
+    return izip_longest(fillvalue=fillvalue, *args)
+
+
+def nts_to_codons(sequence):
+    return [''.join(nts) for nts in grouper(sequence, 3)]
 
 
 def main(args):
@@ -31,6 +45,12 @@ def main(args):
     # Read the data as name sequence pairs.
     with open(args.fasta) as fin:
         name_seq_pairs = ad_hoc_fasta_reader(fin)
+
+    # Convert from nucleotide sequences to codon sequences.
+    name_seq_pairs = [
+            (name, nts_to_codons(seq)) for name, seq in name_seq_pairs]
+
+    # Convert the pairs to a dict.
     name_to_seq = dict(name_seq_pairs)
 
     # Order the observables.
@@ -45,12 +65,19 @@ def main(args):
     suffix_to_axis = {'YAL056W' : 0, 'YOR371C' : 1}
     observable_axes = [suffix_to_axis[s] for s in observable_suffixes]
 
+    """
     # Define the map from nucleotide to observation index.
     nt_to_state = {
             'A' : 0,
             'C' : 1,
             'G' : 2,
             'T' : 3}
+    """
+
+    # Define the map from codon to observation index.
+    codon_to_state = dict()
+    for i, (codon, aa) in enumerate(mg94geneconv._gen_codon_aa_pairs()):
+        codon_to_state[codon.upper()] = i
 
     # Track the state observations.
     nsites = len(name_seq_pairs[0][1])
@@ -58,7 +85,7 @@ def main(args):
     for site in range(nsites):
         observations = []
         for name in observable_names:
-            observation = nt_to_state[name_to_seq[name][site]]
+            observation = codon_to_state[name_to_seq[name][site]]
             observations.append(observation)
         iid_observations.append(observations)
 
