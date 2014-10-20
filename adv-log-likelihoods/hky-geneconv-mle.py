@@ -96,14 +96,17 @@ def main(args):
                 mle_geneconv_common.eval_ll_internets,
                 args.ll_url)
     else:
-        fn = mle_geneconv_common.eval_ll_cmdline
+        #fn = mle_geneconv_common.eval_ll_cmdline
+        #fn = mle_geneconv_common.eval_ll_module
+        fn = mle_geneconv_common.eval_ll_v3module
 
     # definet the abstract model
-    M = HKY_GENECONV_Abstract()
+    M = HKY85_GENECONV_Abstract()
 
     # define the function to minimize
     f = functools.partial(
-            objective,
+            #mle_geneconv_common.objective,
+            mle_geneconv_common.objective_and_gradient,
             M,
             fn,
             tree_row, tree_col, tree_process,
@@ -111,7 +114,8 @@ def main(args):
             edges)
 
     # do the search
-    result = scipy.optimize.minimize(f, x, method='L-BFGS-B')
+    #result = scipy.optimize.minimize(f, x, method='L-BFGS-B')
+    result = scipy.optimize.minimize(f, x, jac=True, method='L-BFGS-B')
 
     # report the raw search results
     print('optimization result:')
