@@ -90,6 +90,18 @@ def main(args):
     x_rates = np.log(np.array(edge_rates))
     x = np.concatenate([x_process, x_rates])
 
+    # debugging
+    USE_FINITE_DIFFERENCES = False
+    if USE_FINITE_DIFFERENCES:
+        fn_source = mle_geneconv_common.eval_ll_module
+        fn_strategy = mle_geneconv_common.objective_and_finite_differences
+        jac = True
+    else:
+        fn_source = mle_geneconv_common.eval_ll_v3module
+        fn_strategy = mle_geneconv_common.objective_and_gradient
+        jac = True
+
+    """
     # define the source of the log likelihood evaluation
     if args.ll_url:
         fn = functools.partial(
@@ -97,25 +109,24 @@ def main(args):
                 args.ll_url)
     else:
         #fn = mle_geneconv_common.eval_ll_cmdline
-        #fn = mle_geneconv_common.eval_ll_module
-        fn = mle_geneconv_common.eval_ll_v3module
+        fn = mle_geneconv_common.eval_ll_module
+        #fn = mle_geneconv_common.eval_ll_v3module
+    """
 
-    # definet the abstract model
+    # define the abstract model
     M = HKY85_GENECONV_Abstract()
 
     # define the function to minimize
     f = functools.partial(
-            #mle_geneconv_common.objective,
-            mle_geneconv_common.objective_and_gradient,
+            fn_strategy,
             M,
-            fn,
+            fn_source,
             tree_row, tree_col, tree_process,
             observable_nodes, observable_axes, iid_observations,
             edges)
 
     # do the search
-    #result = scipy.optimize.minimize(f, x, method='L-BFGS-B')
-    result = scipy.optimize.minimize(f, x, jac=True, method='L-BFGS-B')
+    result = scipy.optimize.minimize(f, x, jac=jac, method='L-BFGS-B')
 
     # report the raw search results
     print('optimization result:')

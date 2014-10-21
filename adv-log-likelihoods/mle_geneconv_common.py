@@ -2,6 +2,9 @@
 Common functions for gene conversion MLE.
 
 """
+from __future__ import division, print_function
+
+import functools
 import json
 import subprocess
 import requests
@@ -185,10 +188,16 @@ def objective_and_gradient(
 
     print('other derivatives:', other_derivs)
 
+    #TODO this is for debugging
+    #raise Exception
+
     # Return the function value and the gradient.
     # Remember this is to be minimized so convert this to use signs correctly.
     f = -ll
     g = -np.concatenate((other_derivs, edge_derivs))
+    print('objective function:', f)
+    print('gradient:', g)
+    print()
     return f, g
 
 
@@ -207,6 +216,7 @@ def objective_and_finite_differences(
 
     """
     delta = 1e-8
+    requested_derivatives = []
     curried_objective = functools.partial(
             objective,
             abstract_model,
@@ -214,17 +224,22 @@ def objective_and_finite_differences(
             tree_row, tree_col, tree_process,
             observable_nodes, observable_axes, iid_observations,
             edges)
-    ll = curried_objective(x)
+    f = curried_objective(x)
     n = len(x)
     diffs = []
     for i in range(n):
         u = np.array(x)
         u[i] += delta
-        ll_diff = curried_objective(u)
-        d = (ll_diff - ll) / delta
+        f_diff = curried_objective(u)
+        d = (f_diff - f) / delta
         diffs.append(d)
-    #TODO still under construction and not working
-    return np.array(diffs)
+    g = np.array(diffs)
+    print('function value:', f)
+    print('finite differences:', g)
+    print()
+    #TODO this is for debugging
+    #raise Exception
+    return f, g
 
 
 def objective(
