@@ -129,7 +129,13 @@ def main(args):
     else:
         #fn = mle_geneconv_common.eval_ll_cmdline
         #fn = mle_geneconv_common.eval_ll_module
-        fn = mle_geneconv_common.eval_ll_v3module
+        #fn = mle_geneconv_common.eval_ll_v3module
+
+        nworkers = 4
+        fn = functools.partial(
+                mle_geneconv_common.eval_ll_v3module_multiprocessing,
+                nworkers)
+
 
     # define the function to minimize
     f = functools.partial(

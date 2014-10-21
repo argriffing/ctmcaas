@@ -9,6 +9,7 @@ import json
 import subprocess
 import requests
 import copy
+import multiprocessing
 
 import numpy as np
 from numpy.testing import assert_equal
@@ -48,10 +49,10 @@ def eval_ll_v3module_multiprocessing(nworkers, j_data):
     site_weights_per_worker = [[] for i in range(nworkers)]
     for i in range(nsites):
         obs = all_iid_observations[i]
-        site_weights = all_site_weights[i]
+        site_weight = all_site_weights[i]
         worker = i % nworkers
         obs_per_worker[worker].append(obs)
-        site_weights_per_worker[worker].append(obs)
+        site_weights_per_worker[worker].append(site_weight)
 
     # Define json data per worker.
     json_data_per_worker = []
@@ -61,6 +62,12 @@ def eval_ll_v3module_multiprocessing(nworkers, j_data):
         worker_data['site_weights'] = site_weights_per_worker[i]
         json_data_per_worker.append(worker_data)
 
+    # FIXME just debugging...
+    #print('multiprocessing inputs:')
+    #for d in json_data_per_worker:
+        #print(d)
+    #print()
+
     # Compute the log likelihood and some gradients,
     # partitioning the independent sites among worker processes.
     # These quantities are additive.
@@ -68,7 +75,28 @@ def eval_ll_v3module_multiprocessing(nworkers, j_data):
     f = jsonctmctree.ll.process_json_in
     results = p.map(f, json_data_per_worker)
 
+    #print('multiprocessing results:')
+    #for r in results:
+        #print(r)
+    #print()
+
     # Combine the results.
+    if any(r['status'] == 'error' for r in results):
+        status = 'error'
+    else:
+        status = 'success'
+    feasibility = all(r['feasibility'] for r in results)
+    #message = '\n'.join(r['message'].strip() for r in results)
+    log_likelihood = sum(r['log_likelihood'] for r in results)
+    d_per_partition = [r['edge_derivatives'] for r in results]
+    edge_derivatives = [sum(arr) for arr in zip(*d_per_partition)]
+    j_combined = dict(
+            status = status,
+            feasibility = feasibility,
+            #message = message,
+            log_likelihood = log_likelihood,
+            edge_derivatives = edge_derivatives)
+    return j_combined
 
 
 def eval_ll_cmdline(j_data):

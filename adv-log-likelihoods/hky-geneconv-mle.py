@@ -97,9 +97,14 @@ def main(args):
         fn_strategy = mle_geneconv_common.objective_and_finite_differences
         jac = True
     else:
-        fn_source = mle_geneconv_common.eval_ll_v3module
+        nworkers = 4
+        fn_source = functools.partial(
+                mle_geneconv_common.eval_ll_v3module_multiprocessing,
+                nworkers)
+        #fn_source = mle_geneconv_common.eval_ll_v3module
         fn_strategy = mle_geneconv_common.objective_and_gradient
         jac = True
+
 
     """
     # define the source of the log likelihood evaluation
