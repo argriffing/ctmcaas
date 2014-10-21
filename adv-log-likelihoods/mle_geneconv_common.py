@@ -8,15 +8,67 @@ import functools
 import json
 import subprocess
 import requests
+import copy
 
 import numpy as np
+from numpy.testing import assert_equal
 
 import ll
-
 import jsonctmctree.ll
 
 
-__all__ = ['eval_ll_cmdline', 'eval_ll_internets', 'objective']
+__all__ = [
+    'eval_ll_cmdline',
+    'eval_ll_internets',
+    'eval_ll_module',
+    'eval_ll_v3module',
+    'eval_ll_v3module_multiprocessing',
+    'objective',
+    ]
+
+
+def eval_ll_v3module_multiprocessing(nworkers, j_data):
+    """
+    Use multiple cores to process the json input.
+
+    When running OpenBLAS, use the OPENBLAS_MAIN_FREE=1
+    environment variable setting when using multiprocessing.
+    Otherwise OpenBLAS will reserve all of the cores for its
+    parallel linear algebra functions like matrix multiplication.
+
+    """
+    # Copy the iid observations from the rest of the json input.
+    all_iid_observations = j_data['iid_observations']
+    all_site_weights = j_data['site_weights']
+    nsites = len(all_iid_observations)
+    assert_equal(len(all_iid_observations), len(all_site_weights))
+
+    # Define the per-worker observations and weights.
+    obs_per_worker = [[] for i in range(nworkers)]
+    site_weights_per_worker = [[] for i in range(nworkers)]
+    for i in range(nsites):
+        obs = all_iid_observations[i]
+        site_weights = all_site_weights[i]
+        worker = i % nworkers
+        obs_per_worker[worker].append(obs)
+        site_weights_per_worker[worker].append(obs)
+
+    # Define json data per worker.
+    json_data_per_worker = []
+    for i in range(nworkers):
+        worker_data = copy.deepcopy(j_data)
+        worker_data['iid_observations'] = obs_per_worker[i]
+        worker_data['site_weights'] = site_weights_per_worker[i]
+        json_data_per_worker.append(worker_data)
+
+    # Compute the log likelihood and some gradients,
+    # partitioning the independent sites among worker processes.
+    # These quantities are additive.
+    p = multiprocessing.Pool(nworkers)
+    f = jsonctmctree.ll.process_json_in
+    results = p.map(f, json_data_per_worker)
+
+    # Combine the results.
 
 
 def eval_ll_cmdline(j_data):
