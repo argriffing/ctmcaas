@@ -56,6 +56,7 @@ def main(args):
     else:
         nsites = args.nsites
         name_seq_pairs = [(n, s[:nsites]) for n, s in name_seq_pairs]
+    print('number of sites to be analyzed:', nsites)
 
     # Convert the pairs to a dict.
     name_to_seq = dict(name_seq_pairs)
@@ -152,28 +153,33 @@ def main(args):
             observable_nodes, observable_axes, iid_observations,
             edges)
 
+    # print intermediate results in the callback
+    def cb(x):
+        k = len(edges)
+        x_process, x_edge = x[:-k], x[-k:]
+        edge_rates = np.exp(x_edge)
+        m = M.instantiate(x_process)
+        print('kappa:', m.kappa)
+        print('omega:', m.omega)
+        print('tau:', m.tau)
+        print('nt_probs:', m.nt_probs)
+        print('edge rates:')
+        for edge, rate in zip(edges, edge_rates):
+            print(edge, ':', rate)
+        print()
+
     # do the search
-    result = scipy.optimize.minimize(f, x, jac=True, method='L-BFGS-B')
+    result = scipy.optimize.minimize(
+            f, x, jac=True, method='L-BFGS-B', callback=cb)
 
     # report the raw search results
     print('optimization result:')
     print(result)
     print()
 
-    # unpack the result
-    k = len(edges)
+    # unpack the result and print it
     x = result.x
-    x_process, x_edge = x[:-k], x[-k:]
-    edge_rates = np.exp(x_edge)
-    m = M.instantiate(x_process)
-    print('kappa:', m.kappa)
-    print('omega:', m.omega)
-    print('tau:', m.tau)
-    print('nt_probs:', m.nt_probs)
-    print('edge rates:')
-    for edge, rate in zip(edges, edge_rates):
-        print(edge, ':', rate)
-    print()
+    cb(x)
 
 
 if __name__ == '__main__':

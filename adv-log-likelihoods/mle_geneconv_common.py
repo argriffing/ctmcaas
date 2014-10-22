@@ -10,6 +10,7 @@ import subprocess
 import requests
 import copy
 import multiprocessing
+from guppy import hpy
 
 import numpy as np
 from numpy.testing import assert_equal
@@ -55,9 +56,11 @@ def eval_ll_v3module_multiprocessing(nworkers, j_data):
         site_weights_per_worker[worker].append(site_weight)
 
     # Define json data per worker.
+    # Use a shallow copy of the parsed json object,
+    # but overwrite the worker-specific observation and site weights.
     json_data_per_worker = []
     for i in range(nworkers):
-        worker_data = copy.deepcopy(j_data)
+        worker_data = dict(j_data)
         worker_data['iid_observations'] = obs_per_worker[i]
         worker_data['site_weights'] = site_weights_per_worker[i]
         json_data_per_worker.append(worker_data)
