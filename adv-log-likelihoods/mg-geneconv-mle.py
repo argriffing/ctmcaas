@@ -50,6 +50,13 @@ def main(args):
     name_seq_pairs = [
             (name, nts_to_codons(seq)) for name, seq in name_seq_pairs]
 
+    # Throttle the number of sites if requested.
+    if args.nsites is None:
+        nsites = len(name_seq_pairs[0][1])
+    else:
+        nsites = args.nsites
+        name_seq_pairs = [(n, s[:nsites]) for n, s in name_seq_pairs]
+
     # Convert the pairs to a dict.
     name_to_seq = dict(name_seq_pairs)
 
@@ -79,8 +86,6 @@ def main(args):
     for i, (codon, aa) in enumerate(mg94geneconv._gen_codon_aa_pairs()):
         codon_to_state[codon.upper()] = i
 
-    # Track the state observations.
-    nsites = len(name_seq_pairs[0][1])
     iid_observations = []
     for site in range(nsites):
         observations = []
@@ -129,12 +134,12 @@ def main(args):
     else:
         #fn = mle_geneconv_common.eval_ll_cmdline
         #fn = mle_geneconv_common.eval_ll_module
-        #fn = mle_geneconv_common.eval_ll_v3module
+        fn = mle_geneconv_common.eval_ll_v3module
 
-        nworkers = 4
-        fn = functools.partial(
-                mle_geneconv_common.eval_ll_v3module_multiprocessing,
-                nworkers)
+        #nworkers = 4
+        #fn = functools.partial(
+                #mle_geneconv_common.eval_ll_v3module_multiprocessing,
+                #nworkers)
 
 
     # define the function to minimize
@@ -174,6 +179,8 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--ll_url')
+    parser.add_argument('--nsites', type=int,
+            help='upper limit on the number of sites to be used')
     parser.add_argument('--fasta', required=True,
             help='fasta file with paralog alignment of YAL056W and YOR371C')
     main(parser.parse_args())

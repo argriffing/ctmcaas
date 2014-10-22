@@ -8,7 +8,7 @@ if the gene conversion tau parameter is zero.
 
 """
 from StringIO import StringIO
-from itertools import product
+from itertools import product, permutations
 
 import numpy as np
 from numpy.testing import assert_equal
@@ -40,17 +40,7 @@ def _gen_codon_aa_pairs():
 # Instances are not associated with actual parameter values.
 class MG94_GENECONV_Abstract(AbstractModel):
     def __init__(self):
-        pass
-
-    def get_structural_transitions(self):
-        """
-        Yield (row, col) pairs corresponding to allowed transitions.
-
-        These transitions may have zero rate for specific parameter values,
-        but they are not forbidden by the structure of the model itself.
-
-        """
-        pass
+        self.structural_info = list(_get_structural_info())
 
     def get_state_space_shape(self):
         return (61, 61)
@@ -59,12 +49,12 @@ class MG94_GENECONV_Abstract(AbstractModel):
         return np.prod(self.get_state_space_shape())
 
     def instantiate(self, x=None):
-        return MG94_GENECONV_Concrete(x)
+        return MG94_GENECONV_Concrete(self.structural_info, x)
 
 
 # instances are associated with actual parameter values
 class MG94_GENECONV_Concrete(ConcreteModel):
-    def __init__(self, x=None):
+    def __init__(self, structural_info, x=None):
         """
         It is important that x can be an unconstrained vector
         that the caller does not need to know or care about.
@@ -80,6 +70,9 @@ class MG94_GENECONV_Concrete(ConcreteModel):
         else:
             info = self._unpack_params(x)
             self.nt_probs, self.kappa, self.omega, self.tau, self.penalty = info
+
+        # Get the structural info.
+        self.structural_info = structural_info
 
         # Mark some downstream attributes as not initialized.
         self._invalidate()
@@ -138,6 +131,7 @@ class MG94_GENECONV_Concrete(ConcreteModel):
 
     def _process_sparse(self):
         distn_info, rate_triples = _get_distn_and_triples(
+                self.structural_info,
                 self.kappa, self.omega, self.tau, self.nt_probs)
         self.prior_feasible_states, self.prior_distribution = distn_info
         self.row, self.col, self.rate = zip(*rate_triples)
@@ -156,7 +150,7 @@ class MG94_GENECONV_Concrete(ConcreteModel):
         return self.row, self.col, self.rate
 
 
-def _get_distn_and_triples(kappa, omega, tau, nt_probs):
+def _get_distn_and_triples(structural_info, kappa, omega, tau, nt_probs):
     """
     Distribution and triples for the mg94 gene conversion process.
 
@@ -168,14 +162,22 @@ def _get_distn_and_triples(kappa, omega, tau, nt_probs):
     # Get the (head_state, tail_state, rate) triples,
     # where the head and tail states are decomposed according to sub-states.
     rate_triples = []
-    for info in _get_structural_info():
-        sa, sb, transition, transversion, conversion, syn, nonsyn = info
-        mut_rate = transition * kappa + transversion
+    for info in structural_info:
+        sa, sb, ts, tv, nt, conversion, syn, nonsyn = info
+        if ts or tv:
+            mut_rate = (ts * kappa + tv) * nt_probs[nt]
+        else:
+            mut_rate = 0
         conv_rate = conversion * tau
         selection = syn + nonsyn * omega
         rate = (mut_rate / expected_rate + conv_rate) * selection
         triple = sa, sb, rate
         rate_triples.append(triple)
+
+    # FIXME debugging...
+    #print('found', len(rate_triples), 'structural triples')
+    #print('expected something like', 61*61*((3+3+3+1) * 2))
+    #print()
 
     # Get the sparse representation of the initial distribution.
     ncodons = len(distn)
@@ -201,9 +203,51 @@ def _gen_plausible_transitions():
         sa0, sa1 = sa
         for sbk in range(ncodons):
             if sbk != sa0:
-                yield sa, (sbk, sa1)
+                yield (sa0, sa1), (sbk, sa1)
             if sbk != sa1:
-                yield sa, (sa0, sbk)
+                yield (sa0, sa1), (sa0, sbk)
+
+
+def _get_dense_codon_structural_info():
+    codons, resids = zip(*list(_gen_codon_aa_pairs()))
+    ncodons = len(codons)
+    naxes = 2
+    assert_equal(ncodons, 61)
+    nts = 'acgt'
+    nt_to_idx = dict((nt, i) for i, nt in enumerate(nts))
+    nt_transitions = {'ag', 'ga', 'ct', 'tc'}
+
+    # Precompute codon state substitution properties.
+    # These will be reused for the dicodon model.
+    # (ts, tv, nt, syn, nonsyn)
+    for sa, sb in permutations(range(ncodons), 2):
+
+        # Determine the synonymous/nonsynonymous nature of the substitution.
+        # The purpose of the redundancy of this notation is to facilitate
+        # arithmetic with indicator variables.
+        syn = (resids[sa] == resids[sb])
+        nonsyn = not syn
+
+        # Determine whether the change could arise by a nucleotide mutation.
+        # If so, determine whether it is a transition or transversion,
+        # and record the nucleotide index of the tail state.
+        ts = False
+        tv = False
+        ca = codons[sa]
+        cb = codons[sb]
+        nt_changes = list(_gen_site_changes(ca, cb))
+        if len(nt_changes) == 1:
+            nta, ntb = nt_changes[0]
+            tail_nt_state = nt_to_idx[ntb]
+            if nta + ntb in nt_transitions:
+                ts = True
+            else:
+                tv = True
+        else:
+            tail_nt_state = None
+
+        yield sa, sb, ts, tv, tail_nt_state, syn, nonsyn
+
 
 
 def _get_structural_info():
@@ -219,13 +263,15 @@ def _get_structural_info():
      * nucleotide tail state {None, 0, 1, 2, 3}
 
     """
-    codons, resids = zip(*list(_gen_codon_aa_pairs()))
-    ncodons = len(codons)
-    assert_equal(ncodons, 61)
-    nts = 'acgt'
-    nt_to_idx = dict((nt, i) for i, nt in enumerate(nts))
-    nt_transitions = {'ag', 'ga', 'ct', 'tc'}
+    # Precompute codon state substitution properties.
+    # These will be reused for the dicodon model.
+    # (ts, tv, nt, syn, nonsyn)
+    codon_index_pair_to_info = {}
+    for info in _get_dense_codon_structural_info():
+        sa, sb, ts, tv, tail_nt_state, syn, nonsyn = info
+        codon_index_pair_to_info[sa, sb] = ts, tv, tail_nt_state, syn, nonsyn
 
+    # Iterate over dicodon substitutions.
     for sa, sb in _gen_plausible_transitions():
 
         # Unpack states.
@@ -243,38 +289,14 @@ def _get_structural_info():
         # Unpack the indices of the initial and final codon in the substitution.
         sak, sbk = codon_changes[0]
 
-        # Determine the synonymous/nonsynonymous nature of the substitution.
-        # The purpose of the redundancy of this notation is to facilitate
-        # arithmetic with indicator variables.
-        syn = False
-        nonsyn = False
-        if resids[sak] == resids[sbk]:
-            syn = True
-        else:
-            nonsyn = True
-
-        # Determine whether the change could arise by a nucleotide mutation.
-        # If so, determine whether it is a transition or transversion,
-        # and record the nucleotide index of the tail state.
-        transition = False
-        transversion = False
-        ca = codons[sak]
-        cb = codons[sbk]
-        nt_changes = list(_gen_site_changes(ca, cb))
-        if len(codon_changes) == 1:
-            nta, ntb = nt_changes[0]
-            nt_tail_state = nt_to_idx[ntb]
-            if nta + ntb in nt_transitions:
-                transition = True
-            else:
-                transversion = True
-        else:
-            tail_nt_state = None
+        # Look up the properties of the codon substitution.
+        info = codon_index_pair_to_info[sak, sbk]
+        ts, tv, tail_nt_state, syn, nonsyn = info
 
         # If either gene conversion or nucleotide mutation is possible,
         # then yield the information about the possible substitution.
-        if transition or transversion or conversion:
-            yield sa, sb, transition, transversion, conversion, syn, nonsyn
+        if ts or tv or conversion:
+            yield sa, sb, ts, tv, tail_nt_state, conversion, syn, nonsyn
 
 
 # This was the mg94 triples generator but has been slightly modified

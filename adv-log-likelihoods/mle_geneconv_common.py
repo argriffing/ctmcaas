@@ -194,6 +194,16 @@ def _log_likelihood_and_edge_derivatives(
 
     j_ll = fn(data)
 
+    status = j_ll['status']
+    feasibility = j_ll['feasibility']
+
+    if status != 'success' or not feasibility:
+        print('results:')
+        print(j_ll)
+        print()
+        raise Exception('encountered some problem in the calculation of '
+                'log likelihood and its derivatives')
+
     log_likelihood = j_ll['log_likelihood']
     edge_derivatives = j_ll['edge_derivatives']
 
