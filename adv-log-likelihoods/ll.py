@@ -214,11 +214,11 @@ def create_indicator_array(
 
 class EigenRateExpm(object):
     def __init__(self, Q_dense):
-        print('computing eigendecomposition...')
+        #print('computing eigendecomposition...')
         self.w, self.U = eig(Q_dense)
-        print('inverting...')
+        #print('inverting...')
         self.V = inv(self.U)
-        print('done preprocessing the rate matrix.')
+        #print('done preprocessing the rate matrix.')
 
     def get_P(self, rate_scaling_factor):
         w_exp = np.exp(self.w * rate_scaling_factor)

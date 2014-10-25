@@ -70,7 +70,8 @@ def main(args):
     # In our case, the compound state has one axis for each paralog,
     # and for each node zero or one or both paralogs may be observable.
     # Each observable can be observed only on a single axis.
-    suffix_to_axis = {'YAL056W' : 0, 'YOR371C' : 1}
+    #suffix_to_axis = {'YAL056W' : 0, 'YOR371C' : 1}
+    suffix_to_axis = {'YDR502C' : 0, 'YLR180W' : 1}
     observable_axes = [suffix_to_axis[s] for s in observable_suffixes]
 
     """
@@ -188,5 +189,5 @@ if __name__ == '__main__':
     parser.add_argument('--nsites', type=int,
             help='upper limit on the number of sites to be used')
     parser.add_argument('--fasta', required=True,
-            help='fasta file with paralog alignment of YAL056W and YOR371C')
+            help='fasta file with paralog alignment')
     main(parser.parse_args())
