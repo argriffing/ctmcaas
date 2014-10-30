@@ -156,8 +156,8 @@ def _log_likelihood_and_edge_derivatives(
     # define the pair of processes
     processes = []
     for m in m0, m1:
-        row, col, rate = m.get_sparse_rates()
-        p = dict(row=row, col=col, rate=rate)
+        row, col, rate, expect = m.get_sparse_rates_and_geneconv_proportion()
+        p = dict(row=row, col=col, rate=rate, expect=expect)
         processes.append(p)
 
     # define the prior distribution
@@ -181,7 +181,7 @@ def _log_likelihood_and_edge_derivatives(
             )
 
     # FIXME debug...
-    with open('out.json', 'wt') as fout:
+    with open('out-for-expectation.json', 'wt') as fout:
         s = json.dumps(j_in, indent=4)
         print(s, file=fout)
 
