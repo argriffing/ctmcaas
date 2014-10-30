@@ -136,6 +136,14 @@ class MG94_GENECONV_Concrete(ConcreteModel):
         self.prior_feasible_states, self.prior_distribution = distn_info
         self.row, self.col, self.rate = zip(*rate_triples)
 
+    def _process_sparse_and_junk(self):
+        # NEW: stuff about expectation
+        distn_info, r_info = _get_distn_and_triples_and_junk(
+                self.structural_info,
+                self.kappa, self.omega, self.tau, self.nt_probs)
+        self.prior_feasible_states, self.prior_distribution = distn_info
+        self.row, self.col, self.rate, self.geneconv_proportion = zip(*r_info)
+
     def get_distribution_info(self):
         # return a list of feasible states
         # and a list of corresponding probabilities
@@ -149,8 +157,26 @@ class MG94_GENECONV_Concrete(ConcreteModel):
             self._process_sparse()
         return self.row, self.col, self.rate
 
+    def get_sparse_rates_and_junk(self):
+        # NEW: stuff about expectation
+        if self.prior_feasible_states is None:
+            self._process_sparse_and_junk()
+        return self.row, self.col, self.rate, self.geneconv_proportion
+
 
 def _get_distn_and_triples(structural_info, kappa, omega, tau, nt_probs):
+    """
+    Distribution and triples for the mg94 gene conversion process.
+
+    """
+    distn_info, rate_info = _get_distn_and_triples_and_junk(
+            structural_info, kappa, omega, tau, nt_probs)
+    rate_triples = [r[:3] for r in rate_info]
+    return distn_info, rate_triples
+
+
+def _get_distn_and_triples_and_junk(
+        structural_info, kappa, omega, tau, nt_probs):
     """
     Distribution and triples for the mg94 gene conversion process.
 
@@ -171,13 +197,12 @@ def _get_distn_and_triples(structural_info, kappa, omega, tau, nt_probs):
         conv_rate = conversion * tau
         selection = syn + nonsyn * omega
         rate = (mut_rate / expected_rate + conv_rate) * selection
-        triple = sa, sb, rate
-        rate_triples.append(triple)
-
-    # FIXME debugging...
-    #print('found', len(rate_triples), 'structural triples')
-    #print('expected something like', 61*61*((3+3+3+1) * 2))
-    #print()
+        if rate and conv_rate and selection:
+            conv_proportion = (conv_rate * selection) / rate
+        else:
+            conv_proportion = 0
+        info = sa, sb, rate, conv_proportion
+        rate_triples.append(info)
 
     # Get the sparse representation of the initial distribution.
     ncodons = len(distn)
