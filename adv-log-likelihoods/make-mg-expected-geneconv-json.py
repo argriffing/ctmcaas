@@ -9,6 +9,7 @@ from __future__ import division, print_function, absolute_import
 from itertools import izip_longest
 import argparse
 import json
+import sys
 
 import numpy as np
 
@@ -39,7 +40,7 @@ def main(args):
     # Read the hardcoded tree information.
     T, root = get_tree_info_with_outgroup()
     leaves = set(v for v, d in T.degree().items() if d == 1)
-    outgroup = 'kluveri'
+    outgroup = 'kluyveri'
 
     # Read the data as name sequence pairs.
     with open(args.fasta) as fin:
@@ -55,7 +56,8 @@ def main(args):
     else:
         nsites = args.nsites
         name_seq_pairs = [(n, s[:nsites]) for n, s in name_seq_pairs]
-    print('number of sites to be analyzed:', nsites)
+    if args.debug:
+        print('number of sites to be analyzed:', nsites, file=sys.stderr)
 
     # Convert the pairs to a dict.
     name_to_seq = dict(name_seq_pairs)
@@ -103,8 +105,9 @@ def main(args):
     edges = list(T.edges())
     edge_to_eidx = dict((e, i) for i, e in enumerate(edges))
 
-    print(observable_names)
-    print(name_to_node)
+    if args.debug:
+        print(observable_names, file=sys.stderr)
+        print(name_to_node, file=sys.stderr)
     observable_nodes = [name_to_node[n[:-suffix_len]] for n in observable_names]
 
     tree_row = [name_to_node[na] for na, nb in edges]
@@ -235,6 +238,7 @@ def create_input_json_object(
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--debug', action='store_true')
     parser.add_argument('--nsites', type=int,
             help='upper limit on the number of sites to be used')
     parser.add_argument('--fasta', required=True,

@@ -40,7 +40,7 @@ def main(args):
     # Read the hardcoded tree information.
     T, root = get_tree_info_with_outgroup()
     leaves = set(v for v, d in T.degree().items() if d == 1)
-    outgroup = 'kluveri'
+    outgroup = 'kluyveri'
 
     # Read the data as name sequence pairs.
     with open(args.fasta) as fin:
