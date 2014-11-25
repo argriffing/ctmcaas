@@ -18,9 +18,9 @@ from numpy.testing import assert_equal
 
 __all__ = ['objective_and_gradient']
 
-
-#NOTE under construction to use an improved interface
-
+#TODO this module should become obsolete
+# when the implementation and testing of the improved json interface
+# is implemented.
 
 
 def objective_and_gradient(
